@@ -12,10 +12,10 @@ use bevy::{
 
 const PADDLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PADDLE_SIZE: Vec2 = Vec2::new(20.0, 120.0);
+const PADDLE_SPEED: f32 = 400.0;
 
 // TODO:
-// 1. paddle movement
-// 2. ball movement
+// 1. ball movement
 
 fn main() {
     App::new()
@@ -28,6 +28,7 @@ fn main() {
         }))
         .add_systems(Startup, setup)
         .add_systems(Update, exit_system)
+        .add_systems(FixedUpdate, move_paddle)
         .run();
 }
 
@@ -58,4 +59,27 @@ fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>)
         info!("User pressed Q key. Exiting...");
         exit.send(AppExit::Success);
     }
+}
+
+fn move_paddle(input: Res<ButtonInput<KeyCode>>,
+               windows: Query<&Window>,
+               mut query: Query<&mut Transform, With<Paddle>>,
+               time: Res<Time<Fixed>>) {
+    let mut paddle_transform = query.single_mut();
+    let mut direction = 0.0;
+
+    if input.pressed(KeyCode::KeyW) {
+        direction = 1.0;
+    }
+    
+    if input.pressed(KeyCode::KeyS) {
+        direction = -1.0;
+    }
+
+    let new_paddle_transform = paddle_transform.translation.y + direction * PADDLE_SPEED * time.delta_seconds();
+    let window_size = windows.single().size();
+    let lower_bound = -window_size.y / 2.0 + PADDLE_SIZE.y / 2.0;
+    let upper_bound = window_size.y / 2.0 - PADDLE_SIZE.y / 2.0;
+
+    paddle_transform.translation.y = new_paddle_transform.clamp(lower_bound, upper_bound);
 }
