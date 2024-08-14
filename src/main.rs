@@ -35,6 +35,13 @@ fn setup(mut commands: Commands) {
     ));
 }
 
+fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>) {
+    if input.just_pressed(KeyCode::KeyQ) {
+        info!("User pressed Q key. Exiting...");
+        exit.send(AppExit::Success);
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(RenderPlugin {
@@ -45,10 +52,10 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, setup)
+        .add_systems(Update, exit_system)
         .run();
 }
 
 // TODO:
-// 1. q to close window
-// 2. paddle movement
-// 3. ball movement
+// 1. paddle movement
+// 2. ball movement
