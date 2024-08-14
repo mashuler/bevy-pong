@@ -13,6 +13,24 @@ use bevy::{
 const PADDLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PADDLE_SIZE: Vec2 = Vec2::new(20.0, 120.0);
 
+// TODO:
+// 1. paddle movement
+// 2. ball movement
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(RenderPlugin {
+            render_creation: RenderCreation::Automatic(WgpuSettings {
+                backends: Some(Backends::VULKAN),
+                ..default()
+            }),
+            ..default()
+        }))
+        .add_systems(Startup, setup)
+        .add_systems(Update, exit_system)
+        .run();
+}
+
 #[derive(Component)]
 struct Paddle;
 
@@ -41,21 +59,3 @@ fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>)
         exit.send(AppExit::Success);
     }
 }
-
-fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins.set(RenderPlugin {
-            render_creation: RenderCreation::Automatic(WgpuSettings {
-                backends: Some(Backends::VULKAN),
-                ..default()
-            }),
-            ..default()
-        }))
-        .add_systems(Startup, setup)
-        .add_systems(Update, exit_system)
-        .run();
-}
-
-// TODO:
-// 1. paddle movement
-// 2. ball movement
