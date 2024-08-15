@@ -15,6 +15,7 @@ const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 const PADDLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PADDLE_SIZE: Vec2 = Vec2::new(20.0, 120.0);
 const PADDLE_SPEED: f32 = 400.0;
+const PADDLE_START_LOCATION: Vec2 = Vec2::new(-WINDOW_SIZE.x / 2.0 + PADDLE_SIZE.x + PADDLE_SIZE.x / 2.0, 0.0);
 
 const BALL_COLOR: Color = PADDLE_COLOR;
 const BALL_SIZE: Vec2 = Vec2::new(20.0, 20.0);
@@ -59,7 +60,7 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         SpriteBundle {
             transform: Transform {
-                translation: Vec3::new(0.0, 0.0, 0.0),
+                translation: PADDLE_START_LOCATION.extend(0.0),
                 scale: PADDLE_SIZE.extend(1.0),
                 ..default()
             },
