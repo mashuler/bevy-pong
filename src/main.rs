@@ -10,6 +10,8 @@ use bevy::{
     }
 };
 
+const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
+
 const PADDLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PADDLE_SIZE: Vec2 = Vec2::new(20.0, 120.0);
 const PADDLE_SPEED: f32 = 400.0;
@@ -22,13 +24,24 @@ const BALL_SIZE: Vec2 = Vec2::new(20.0, 20.0);
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(RenderPlugin {
-            render_creation: RenderCreation::Automatic(WgpuSettings {
-                backends: Some(Backends::VULKAN),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        backends: Some(Backends::VULKAN),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Pong".into(),
+                        resolution: WINDOW_SIZE.into(),
+                        ..default()
+                    }),
+                    ..default()
+                })
+            )
         .add_systems(Startup, setup)
         .add_systems(Update, exit_system)
         .add_systems(FixedUpdate, move_paddle)
