@@ -14,6 +14,9 @@ const PADDLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PADDLE_SIZE: Vec2 = Vec2::new(20.0, 120.0);
 const PADDLE_SPEED: f32 = 400.0;
 
+const BALL_COLOR: Color = PADDLE_COLOR;
+const BALL_SIZE: Vec2 = Vec2::new(20.0, 20.0);
+
 // TODO:
 // 1. ball movement
 
@@ -35,6 +38,9 @@ fn main() {
 #[derive(Component)]
 struct Paddle;
 
+#[derive(Component)]
+struct Ball;
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn((
@@ -51,6 +57,21 @@ fn setup(mut commands: Commands) {
             ..default()
         },
         Paddle
+    ));
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform {
+                translation: Vec3::new(40.0, 0.0, 0.0),
+                scale: BALL_SIZE.extend(1.0),
+                ..default()
+            },
+            sprite: Sprite {
+                color: BALL_COLOR,
+                ..default()
+            },
+            ..default()
+        },
+        Ball
     ));
 }
 
