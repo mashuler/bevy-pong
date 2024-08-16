@@ -1,4 +1,8 @@
 use bevy::{
+    math::bounding::{
+        Aabb2d,
+        IntersectsVolume
+    },
     prelude::*, 
     render::{
         RenderPlugin,
@@ -48,7 +52,7 @@ fn main() {
             )
         .add_systems(Startup, setup)
         .add_systems(Update, exit_system)
-        .add_systems(FixedUpdate, (move_paddle, apply_velocity).chain())
+        .add_systems(FixedUpdate, (move_paddle, apply_velocity, handle_collisions).chain())
         .run();
 }
 
@@ -57,6 +61,9 @@ struct Paddle;
 
 #[derive(Component)]
 struct Ball;
+
+#[derive(Component)]
+struct Collider;
 
 // Deref allows the Vec2 to be access directly instead of velocity.0.x
 #[derive(Component, Deref, DerefMut)]
@@ -77,7 +84,8 @@ fn setup(mut commands: Commands) {
             },
             ..default()
         },
-        Paddle
+        Paddle,
+        Collider
     ));
     commands.spawn((
         SpriteBundle {
@@ -132,4 +140,33 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time<
         transform.translation.x += velocity.x * time.delta_seconds();
         transform.translation.y += velocity.y * time.delta_seconds();
     }
+}
+
+// TODO - refactor ball_collision. Either get rid of it or change return type
+fn handle_collisions(
+    mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
+    collider_query: Query<&Transform, With<Collider>>
+) {
+    let (mut ball_velocity, ball_transform) = ball_query.single_mut();
+
+    for collider_transform in &collider_query {
+        let collision = ball_collision(
+            Aabb2d::new( ball_transform.translation.truncate(), ball_transform.scale.truncate() / 2.0),
+            Aabb2d::new(collider_transform.translation.truncate(), collider_transform.scale.truncate() / 2.0)
+        );
+
+        if let Some(()) = collision {
+            // reflect x
+            ball_velocity.x = -ball_velocity.x
+
+        }
+    }
+
+}
+
+fn ball_collision(ball: Aabb2d, bounding_box: Aabb2d) -> Option<()> {
+    if !ball.intersects(&bounding_box) {
+        return None;
+    }
+    Some(())
 }
