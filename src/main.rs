@@ -52,7 +52,7 @@ fn main() {
                     ..default()
                 })
             )
-        .insert_resource(Score(0))
+        .insert_resource(Score { left: 0, right: 0 })
         .add_systems(Startup, setup)
         .add_systems(Update, exit_system)
         .add_systems(FixedUpdate,
@@ -81,11 +81,21 @@ struct Collider;
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
-#[derive(Component)]
-struct ScoringZone;
+enum Side {
+    Left,
+    Right
+}
 
-#[derive(Resource, Deref, DerefMut)]
-struct Score(usize);
+#[derive(Component)]
+struct ScoringZone {
+    side: Side
+}
+
+#[derive(Resource)]
+struct Score {
+    left: usize,
+    right: usize
+}
 
 #[derive(Bundle)]
 struct PaddleBundle {
@@ -123,7 +133,7 @@ struct ScoringZoneBundle {
 }
 
 impl ScoringZoneBundle {
-    fn new(starting_location: Vec2) -> Self {
+    fn new(starting_location: Vec2, side: Side) -> Self {
         Self {
             transform_bundle: TransformBundle {
                 local: Transform {
@@ -133,7 +143,7 @@ impl ScoringZoneBundle {
                 },
                 ..default()
             },
-            scoring_zone: ScoringZone,
+            scoring_zone: ScoringZone { side },
             collider: Collider
         }
     }
@@ -159,8 +169,8 @@ fn setup(mut commands: Commands) {
         Ball,
         Velocity(BALL_START_DIRECTION.normalize() * BALL_SPEED)
     ));
-    commands.spawn(ScoringZoneBundle::new(LEFT_SCORING_ZONE_LOCATION));
-    commands.spawn(ScoringZoneBundle::new(RIGHT_SCORING_ZONE_LOCATION));
+    commands.spawn(ScoringZoneBundle::new(LEFT_SCORING_ZONE_LOCATION, Side::Left));
+    commands.spawn(ScoringZoneBundle::new(RIGHT_SCORING_ZONE_LOCATION, Side::Right));
 }
 
 fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>) {
@@ -205,20 +215,30 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time<
 fn handle_collisions(
     mut commands: Commands,
     mut score: ResMut<Score>,
-    mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
-    collider_query: Query<(Entity, &Transform, Option<&ScoringZone>), With<Collider>>
+    mut ball_query: Query<(Entity, &mut Velocity, &Transform), With<Ball>>,
+    collider_query: Query<(&Transform, Option<&ScoringZone>), With<Collider>>
 ) {
-    let (mut ball_velocity, ball_transform) = ball_query.single_mut();
+    if ball_query.is_empty() {
+        // The ball has been despawned
+        // TODO - maybe we could avoid this check by using states?
+        return;
+    }
 
-    for (collider_entity, collider_transform, maybe_scoring_zone) in &collider_query {
+    let (ball_entity, mut ball_velocity, ball_transform) = ball_query.single_mut();
+
+    for (collider_transform, maybe_scoring_zone) in &collider_query {
         let ball_bb = Aabb2d::new(ball_transform.translation.truncate(), ball_transform.scale.truncate() / 2.0);
         let collider_bb = Aabb2d::new(collider_transform.translation.truncate(), collider_transform.scale.truncate() / 2.0);
 
         if ball_bb.intersects(&collider_bb) {
-            if maybe_scoring_zone.is_some() {
-                commands.entity(collider_entity).despawn();
-                **score += 1;
-                info!("Score = {}", **score);
+            if let Some(scoring_zone) = maybe_scoring_zone {
+                commands.entity(ball_entity).despawn();
+                match scoring_zone.side {
+                    Side::Left => score.left += 1,
+                    Side::Right => score.right += 1,
+                }
+                info!("Left score = {}", score.left);
+                info!("Right score = {}", score.right);
             } else {
                 // reflect x
                 ball_velocity.x = -ball_velocity.x
