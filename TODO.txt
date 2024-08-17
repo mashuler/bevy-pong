@@ -1,3 +1,4 @@
-1. Scoring
+1. Add score UI
 2. Reset ball after scoring / out of bound
 3. Randomize ball starting direction (left, right, and diagonals)
+4. Bound ball on top and bottom of screen
