@@ -28,6 +28,10 @@ const BALL_SPEED: f32 = 500.0;
 const BALL_START_LOCATION: Vec2 = Vec2::new(0.0, 0.0);
 const BALL_START_DIRECTION: Vec2 = Vec2::new(-1.0, 0.0);
 
+const SCORING_ZONE_SIZE: Vec2 = BALL_SIZE;
+const LEFT_SCORING_ZONE_LOCATION: Vec2 = Vec2::new(-WINDOW_SIZE.x / 2.0 - SCORING_ZONE_SIZE.x / 2.0, 0.0);
+const RIGHT_SCORING_ZONE_LOCATION: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0 + SCORING_ZONE_SIZE.x / 2.0, 0.0);
+
 fn main() {
     App::new()
         .add_plugins(
@@ -48,6 +52,7 @@ fn main() {
                     ..default()
                 })
             )
+        .insert_resource(Score(0))
         .add_systems(Startup, setup)
         .add_systems(Update, exit_system)
         .add_systems(FixedUpdate,
@@ -75,6 +80,12 @@ struct Collider;
 // Deref allows the Vec2 to be access directly instead of velocity.0.x
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
+
+#[derive(Component)]
+struct ScoringZone;
+
+#[derive(Resource, Deref, DerefMut)]
+struct Score(usize);
 
 #[derive(Bundle)]
 struct PaddleBundle {
@@ -104,6 +115,30 @@ impl PaddleBundle {
     }
 }
 
+#[derive(Bundle)]
+struct ScoringZoneBundle {
+    transform_bundle: TransformBundle,
+    scoring_zone: ScoringZone,
+    collider:Collider
+}
+
+impl ScoringZoneBundle {
+    fn new(starting_location: Vec2) -> Self {
+        Self {
+            transform_bundle: TransformBundle {
+                local: Transform {
+                    translation: starting_location.extend(1.0),
+                    scale: SCORING_ZONE_SIZE.extend(1.0),
+                    ..default()
+                },
+                ..default()
+            },
+            scoring_zone: ScoringZone,
+            collider: Collider
+        }
+    }
+}
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn((PaddleBundle::new(PLAYER_PADDLE_START_LOCATION), Player));
@@ -124,6 +159,8 @@ fn setup(mut commands: Commands) {
         Ball,
         Velocity(BALL_START_DIRECTION.normalize() * BALL_SPEED)
     ));
+    commands.spawn(ScoringZoneBundle::new(LEFT_SCORING_ZONE_LOCATION));
+    commands.spawn(ScoringZoneBundle::new(RIGHT_SCORING_ZONE_LOCATION));
 }
 
 fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>) {
@@ -166,18 +203,26 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time<
 }
 
 fn handle_collisions(
+    mut commands: Commands,
+    mut score: ResMut<Score>,
     mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
-    collider_query: Query<&Transform, With<Collider>>
+    collider_query: Query<(Entity, &Transform, Option<&ScoringZone>), With<Collider>>
 ) {
     let (mut ball_velocity, ball_transform) = ball_query.single_mut();
 
-    for collider_transform in &collider_query {
+    for (collider_entity, collider_transform, maybe_scoring_zone) in &collider_query {
         let ball_bb = Aabb2d::new(ball_transform.translation.truncate(), ball_transform.scale.truncate() / 2.0);
         let collider_bb = Aabb2d::new(collider_transform.translation.truncate(), collider_transform.scale.truncate() / 2.0);
 
         if ball_bb.intersects(&collider_bb) {
-            // reflect x
-            ball_velocity.x = -ball_velocity.x
+            if maybe_scoring_zone.is_some() {
+                commands.entity(collider_entity).despawn();
+                **score += 1;
+                info!("Score = {}", **score);
+            } else {
+                // reflect x
+                ball_velocity.x = -ball_velocity.x
+            }
         }
     }
 }
