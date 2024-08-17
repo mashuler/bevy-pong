@@ -19,7 +19,8 @@ const WINDOW_SIZE: Vec2 = Vec2::new(800.0, 600.0);
 const PADDLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PADDLE_SIZE: Vec2 = Vec2::new(20.0, 120.0);
 const PADDLE_SPEED: f32 = 400.0;
-const PADDLE_START_LOCATION: Vec2 = Vec2::new(-WINDOW_SIZE.x / 2.0 + PADDLE_SIZE.x + PADDLE_SIZE.x / 2.0, 0.0);
+const PLAYER_PADDLE_START_LOCATION: Vec2 = Vec2::new(-WINDOW_SIZE.x / 2.0 + PADDLE_SIZE.x + PADDLE_SIZE.x / 2.0, 0.0);
+const OPPONENT_PADDLE_START_LOCATION: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0 - PADDLE_SIZE.x - PADDLE_SIZE.x / 2.0, 0.0);
 
 const BALL_COLOR: Color = PADDLE_COLOR;
 const BALL_SIZE: Vec2 = Vec2::new(20.0, 20.0);
@@ -54,13 +55,16 @@ fn main() {
         .add_systems(Update, exit_system)
         .add_systems(FixedUpdate,
             (
-                move_paddle,
+                move_player_paddle,
                 apply_velocity,
                 handle_collisions
             ).chain()
         )
         .run();
 }
+
+#[derive(Component)]
+struct Player;
 
 #[derive(Component)]
 struct Paddle;
@@ -80,7 +84,24 @@ fn setup(mut commands: Commands) {
     commands.spawn((
         SpriteBundle {
             transform: Transform {
-                translation: PADDLE_START_LOCATION.extend(1.0),
+                translation: PLAYER_PADDLE_START_LOCATION.extend(1.0),
+                scale: PADDLE_SIZE.extend(1.0),
+                ..default()
+            },
+            sprite: Sprite {
+                color: PADDLE_COLOR,
+                ..default()
+            },
+            ..default()
+        },
+        Player,
+        Paddle,
+        Collider
+    ));
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform {
+                translation: OPPONENT_PADDLE_START_LOCATION.extend(1.0),
                 scale: PADDLE_SIZE.extend(1.0),
                 ..default()
             },
@@ -118,9 +139,9 @@ fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>)
     }
 }
 
-fn move_paddle(input: Res<ButtonInput<KeyCode>>,
+fn move_player_paddle(input: Res<ButtonInput<KeyCode>>,
                windows: Query<&Window>,
-               mut query: Query<&mut Transform, With<Paddle>>,
+               mut query: Query<&mut Transform, (With<Player>, With<Paddle>)>,
                time: Res<Time<Fixed>>) {
     let mut paddle_transform = query.single_mut();
     let mut direction = 0.0;
