@@ -52,7 +52,13 @@ fn main() {
             )
         .add_systems(Startup, setup)
         .add_systems(Update, exit_system)
-        .add_systems(FixedUpdate, (move_paddle, apply_velocity, handle_collisions).chain())
+        .add_systems(FixedUpdate,
+            (
+                move_paddle,
+                apply_velocity,
+                handle_collisions
+            ).chain()
+        )
         .run();
 }
 
