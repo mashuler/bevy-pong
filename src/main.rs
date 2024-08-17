@@ -28,9 +28,6 @@ const BALL_SPEED: f32 = 500.0;
 const BALL_START_LOCATION: Vec2 = Vec2::new(0.0, 0.0);
 const BALL_START_DIRECTION: Vec2 = Vec2::new(-1.0, 0.0);
 
-// TODO:
-// 1. Collision detection
-
 fn main() {
     App::new()
         .add_plugins(
@@ -139,10 +136,12 @@ fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>)
     }
 }
 
-fn move_player_paddle(input: Res<ButtonInput<KeyCode>>,
-               windows: Query<&Window>,
-               mut query: Query<&mut Transform, (With<Player>, With<Paddle>)>,
-               time: Res<Time<Fixed>>) {
+fn move_player_paddle(
+    input: Res<ButtonInput<KeyCode>>,
+    windows: Query<&Window>,
+    mut query: Query<&mut Transform, (With<Player>, With<Paddle>)>,
+    time: Res<Time<Fixed>>
+) {
     let mut paddle_transform = query.single_mut();
     let mut direction = 0.0;
 
@@ -169,7 +168,6 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time<
     }
 }
 
-// TODO - refactor ball_collision. Either get rid of it or change return type
 fn handle_collisions(
     mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
     collider_query: Query<&Transform, With<Collider>>
