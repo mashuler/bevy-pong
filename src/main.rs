@@ -76,41 +76,38 @@ struct Collider;
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
+#[derive(Bundle)]
+struct PaddleBundle {
+    sprite_bundle: SpriteBundle,
+    paddle: Paddle,
+    colldier: Collider,
+}
+
+impl PaddleBundle {
+    fn new(start_location: Vec2) -> Self {
+        Self {
+            sprite_bundle: SpriteBundle {
+                transform: Transform {
+                    translation: start_location.extend(1.0),
+                    scale: PADDLE_SIZE.extend(1.0),
+                    ..default()
+                },
+                sprite: Sprite {
+                    color: PADDLE_COLOR,
+                    ..default()
+                },
+                ..default()
+            },
+            paddle: Paddle,
+            colldier: Collider,
+        }
+    }
+}
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform {
-                translation: PLAYER_PADDLE_START_LOCATION.extend(1.0),
-                scale: PADDLE_SIZE.extend(1.0),
-                ..default()
-            },
-            sprite: Sprite {
-                color: PADDLE_COLOR,
-                ..default()
-            },
-            ..default()
-        },
-        Player,
-        Paddle,
-        Collider
-    ));
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform {
-                translation: OPPONENT_PADDLE_START_LOCATION.extend(1.0),
-                scale: PADDLE_SIZE.extend(1.0),
-                ..default()
-            },
-            sprite: Sprite {
-                color: PADDLE_COLOR,
-                ..default()
-            },
-            ..default()
-        },
-        Paddle,
-        Collider
-    ));
+    commands.spawn((PaddleBundle::new(PLAYER_PADDLE_START_LOCATION), Player));
+    commands.spawn(PaddleBundle::new(OPPONENT_PADDLE_START_LOCATION));
     commands.spawn((
         SpriteBundle {
             transform: Transform {
