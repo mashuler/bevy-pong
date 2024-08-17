@@ -177,23 +177,12 @@ fn handle_collisions(
     let (mut ball_velocity, ball_transform) = ball_query.single_mut();
 
     for collider_transform in &collider_query {
-        let collision = ball_collision(
-            Aabb2d::new( ball_transform.translation.truncate(), ball_transform.scale.truncate() / 2.0),
-            Aabb2d::new(collider_transform.translation.truncate(), collider_transform.scale.truncate() / 2.0)
-        );
+        let ball_bb = Aabb2d::new(ball_transform.translation.truncate(), ball_transform.scale.truncate() / 2.0);
+        let collider_bb = Aabb2d::new(collider_transform.translation.truncate(), collider_transform.scale.truncate() / 2.0);
 
-        if let Some(()) = collision {
+        if ball_bb.intersects(&collider_bb) {
             // reflect x
             ball_velocity.x = -ball_velocity.x
-
         }
     }
-
-}
-
-fn ball_collision(ball: Aabb2d, bounding_box: Aabb2d) -> Option<()> {
-    if !ball.intersects(&bounding_box) {
-        return None;
-    }
-    Some(())
 }
