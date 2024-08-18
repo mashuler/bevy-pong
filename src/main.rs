@@ -32,6 +32,10 @@ const SCORING_ZONE_SIZE: Vec2 = BALL_SIZE;
 const LEFT_SCORING_ZONE_LOCATION: Vec2 = Vec2::new(-WINDOW_SIZE.x / 2.0 - SCORING_ZONE_SIZE.x / 2.0, 0.0);
 const RIGHT_SCORING_ZONE_LOCATION: Vec2 = Vec2::new(WINDOW_SIZE.x / 2.0 + SCORING_ZONE_SIZE.x / 2.0, 0.0);
 
+const SCORE_UI_PADDING: Val = Val::Px(5.0);
+const SCORE_UI_COLOR: Color = Color::WHITE;
+const SCORE_UI_FONT_SIZE: f32 = 40.0;
+
 fn main() {
     App::new()
         .add_plugins(
@@ -54,7 +58,12 @@ fn main() {
             )
         .insert_resource(Score { left: 0, right: 0 })
         .add_systems(Startup, setup)
-        .add_systems(Update, exit_system)
+        .add_systems(Update,
+            (
+                exit_system,
+                update_score_ui
+            )
+        )
         .add_systems(FixedUpdate,
             (
                 move_player_paddle,
@@ -90,6 +99,9 @@ enum Side {
 struct ScoringZone {
     side: Side
 }
+
+#[derive(Component)]
+struct ScoreUi(Side);
 
 #[derive(Resource)]
 struct Score {
@@ -149,6 +161,50 @@ impl ScoringZoneBundle {
     }
 }
 
+#[derive(Bundle)]
+struct ScoreUiBundle {
+    text_bundle: TextBundle,
+    score_ui: ScoreUi,
+}
+
+impl ScoreUiBundle {
+    fn new(side: Side) -> Self {
+        let style = match side {
+            Side::Left => Style {
+                position_type: PositionType::Absolute,
+                top: SCORE_UI_PADDING,
+                left: SCORE_UI_PADDING,
+                ..default()
+            },
+            Side::Right => Style {
+                position_type: PositionType::Absolute,
+                top: SCORE_UI_PADDING,
+                right: SCORE_UI_PADDING,
+                ..default()
+            }
+        };
+
+        Self {
+            text_bundle: TextBundle::from_sections([
+                TextSection::new(
+                    "Score: ",
+                    TextStyle {
+                        font_size: SCORE_UI_FONT_SIZE,
+                        color: SCORE_UI_COLOR,
+                        ..default()
+                    }
+                ),
+                TextSection::from_style(TextStyle {
+                    font_size: SCORE_UI_FONT_SIZE,
+                    color: SCORE_UI_COLOR,
+                    ..default()
+                }),
+            ]).with_style(style),
+            score_ui: ScoreUi(side),
+        }
+    }
+}
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn((PaddleBundle::new(PLAYER_PADDLE_START_LOCATION), Player));
@@ -171,6 +227,8 @@ fn setup(mut commands: Commands) {
     ));
     commands.spawn(ScoringZoneBundle::new(LEFT_SCORING_ZONE_LOCATION, Side::Left));
     commands.spawn(ScoringZoneBundle::new(RIGHT_SCORING_ZONE_LOCATION, Side::Right));
+    commands.spawn(ScoreUiBundle::new(Side::Left));
+    commands.spawn(ScoreUiBundle::new(Side::Right));
 }
 
 fn exit_system(input: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>) {
@@ -237,12 +295,19 @@ fn handle_collisions(
                     Side::Left => score.left += 1,
                     Side::Right => score.right += 1,
                 }
-                info!("Left score = {}", score.left);
-                info!("Right score = {}", score.right);
             } else {
                 // reflect x
                 ball_velocity.x = -ball_velocity.x
             }
+        }
+    }
+}
+
+fn update_score_ui(score: ResMut<Score>, mut query: Query<(&mut Text, &ScoreUi)>) {
+    for (mut text, ScoreUi(side)) in &mut query {
+        match side {
+            Side::Left => text.sections[1].value = score.left.to_string(),
+            Side::Right => text.sections[1].value = score.right.to_string(),
         }
     }
 }
