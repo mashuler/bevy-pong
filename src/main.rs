@@ -1,3 +1,4 @@
+use std::time::Duration;
 use bevy::{
     math::bounding::{
         Aabb2d,
@@ -56,6 +57,7 @@ fn main() {
                     ..default()
                 })
             )
+        .init_state::<GameState>()
         .insert_resource(Score { left: 0, right: 0 })
         .add_systems(Startup, setup)
         .add_systems(Update,
@@ -65,13 +67,31 @@ fn main() {
             )
         )
         .add_systems(FixedUpdate,
+            move_player_paddle
+        )
+        .add_systems(FixedUpdate,
             (
-                move_player_paddle,
                 apply_velocity,
                 handle_collisions
-            ).chain()
+            )
+            .run_if(in_state(GameState::Playing))
+            .chain(),
+        )
+        .add_systems(OnEnter(GameState::Respawning), start_ball_respawn_timer)
+        .add_systems(Update,
+            (
+                tick_ball_respawn_timer
+            )
+            .run_if(in_state(GameState::Respawning))
         )
         .run();
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default, States)]
+enum GameState {
+    #[default]
+    Playing,
+    Respawning,
 }
 
 #[derive(Component)]
@@ -205,26 +225,42 @@ impl ScoreUiBundle {
     }
 }
 
+#[derive(Bundle)]
+struct BallBundle {
+    sprite_bundle: SpriteBundle,
+    ball: Ball,
+    velocity: Velocity,
+}
+
+impl BallBundle {
+    fn new(location: Vec2, direction: Vec2) -> Self {
+        Self {
+            sprite_bundle: SpriteBundle {
+                transform: Transform {
+                    translation: location.extend(1.0),
+                    scale: BALL_SIZE.extend(1.0),
+                    ..default()
+                },
+                sprite: Sprite {
+                    color: BALL_COLOR,
+                    ..default()
+                },
+                ..default()
+            },
+            ball: Ball,
+            velocity: Velocity(direction.normalize() * BALL_SPEED)
+        }
+    }
+}
+
+#[derive(Component)]
+struct RespawnTimer(Timer);
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
     commands.spawn((PaddleBundle::new(PLAYER_PADDLE_START_LOCATION), Player));
     commands.spawn(PaddleBundle::new(OPPONENT_PADDLE_START_LOCATION));
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform {
-                translation: BALL_START_LOCATION.extend(1.0),
-                scale: BALL_SIZE.extend(1.0),
-                ..default()
-            },
-            sprite: Sprite {
-                color: BALL_COLOR,
-                ..default()
-            },
-            ..default()
-        },
-        Ball,
-        Velocity(BALL_START_DIRECTION.normalize() * BALL_SPEED)
-    ));
+    commands.spawn(BallBundle::new(BALL_START_LOCATION, BALL_START_DIRECTION));
     commands.spawn(ScoringZoneBundle::new(LEFT_SCORING_ZONE_LOCATION, Side::Left));
     commands.spawn(ScoringZoneBundle::new(RIGHT_SCORING_ZONE_LOCATION, Side::Right));
     commands.spawn(ScoreUiBundle::new(Side::Left));
@@ -264,6 +300,7 @@ fn move_player_paddle(
 }
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time<Fixed>>) {
+    info!("{}", time.delta_seconds());
     for (mut transform, velocity) in &mut query {
         transform.translation.x += velocity.x * time.delta_seconds();
         transform.translation.y += velocity.y * time.delta_seconds();
@@ -274,7 +311,8 @@ fn handle_collisions(
     mut commands: Commands,
     mut score: ResMut<Score>,
     mut ball_query: Query<(Entity, &mut Velocity, &Transform), With<Ball>>,
-    collider_query: Query<(&Transform, Option<&ScoringZone>), With<Collider>>
+    collider_query: Query<(&Transform, Option<&ScoringZone>), With<Collider>>,
+    mut next_state: ResMut<NextState<GameState>>
 ) {
     if ball_query.is_empty() {
         // The ball has been despawned
@@ -291,6 +329,7 @@ fn handle_collisions(
         if ball_bb.intersects(&collider_bb) {
             if let Some(scoring_zone) = maybe_scoring_zone {
                 commands.entity(ball_entity).despawn();
+                next_state.set(GameState::Respawning);
                 match scoring_zone.side {
                     Side::Left => score.left += 1,
                     Side::Right => score.right += 1,
@@ -309,5 +348,26 @@ fn update_score_ui(score: ResMut<Score>, mut query: Query<(&mut Text, &ScoreUi)>
             Side::Left => text.sections[1].value = score.left.to_string(),
             Side::Right => text.sections[1].value = score.right.to_string(),
         }
+    }
+}
+
+fn start_ball_respawn_timer(mut commands: Commands) {
+    info!("Starting respawn timer...");
+    commands.spawn(RespawnTimer(Timer::new(Duration::from_secs(3), TimerMode::Once)));
+}
+
+fn tick_ball_respawn_timer(
+    mut commands: Commands,
+    mut query: Query<&mut RespawnTimer>,
+    time: Res<Time>,
+    mut next_state: ResMut<NextState<GameState>>
+) {
+    let mut respawn_timer = query.single_mut();
+    respawn_timer.0.tick(time.delta());
+
+    if respawn_timer.0.finished() {
+        info!("Respawning ball...");
+        commands.spawn(BallBundle::new(BALL_START_LOCATION, BALL_START_LOCATION));
+        next_state.set(GameState::Playing);
     }
 }
