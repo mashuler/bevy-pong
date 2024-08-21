@@ -113,7 +113,7 @@ struct Score {
 struct PaddleBundle {
     sprite_bundle: SpriteBundle,
     paddle: Paddle,
-    colldier: Collider,
+    collider: Collider,
 }
 
 impl PaddleBundle {
@@ -132,7 +132,7 @@ impl PaddleBundle {
                 ..default()
             },
             paddle: Paddle,
-            colldier: Collider,
+            collider: Collider,
         }
     }
 }
