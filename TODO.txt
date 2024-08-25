@@ -1,3 +1,2 @@
-1. Reset ball after scoring / out of bound
-2. Randomize ball starting direction (left, right, and diagonals)
-3. Bound ball on top and bottom of screen
+1. Randomize ball starting direction (left, right, and diagonals)
+2. Bound ball on top and bottom of screen
