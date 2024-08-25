@@ -300,7 +300,6 @@ fn move_player_paddle(
 }
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time<Fixed>>) {
-    info!("{}", time.delta_seconds());
     for (mut transform, velocity) in &mut query {
         transform.translation.x += velocity.x * time.delta_seconds();
         transform.translation.y += velocity.y * time.delta_seconds();
@@ -358,16 +357,16 @@ fn start_ball_respawn_timer(mut commands: Commands) {
 
 fn tick_ball_respawn_timer(
     mut commands: Commands,
-    mut query: Query<&mut RespawnTimer>,
+    mut query: Query<(Entity, &mut RespawnTimer)>,
     time: Res<Time>,
     mut next_state: ResMut<NextState<GameState>>
 ) {
-    let mut respawn_timer = query.single_mut();
+    let (entity, mut respawn_timer) = query.single_mut();
     respawn_timer.0.tick(time.delta());
 
     if respawn_timer.0.finished() {
-        info!("Respawning ball...");
-        commands.spawn(BallBundle::new(BALL_START_LOCATION, BALL_START_LOCATION));
+        commands.entity(entity).despawn();
+        commands.spawn(BallBundle::new(BALL_START_LOCATION, BALL_START_DIRECTION));
         next_state.set(GameState::Playing);
     }
 }
